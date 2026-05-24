@@ -1,119 +1,211 @@
 const { UsersModel } = require("../models/UsersModel");
-const { createSecretToken } = require("../utils/SecretToken");
 const bcrypt = require("bcrypt");
 
-module.exports.Signup = async (req, res) => {
+const { generateToken } = require("../utils/SecretToken");
+
+// LOGIN CONTROLLER
+
+const login = async (req, res) => {
 
   try {
 
-    const { email, password, username, createdAt } = req.body;
+    const { username, password } = req.body;
 
-    const existingUser = await UsersModel.findOne({ email });
+    if (!username || !password) {
 
-    if (existingUser) {
+      return res.status(400).json({
 
-      return res.json({
-        success: false,
-        message: "User already exists",
+        message:
+          "Please provide username and password",
+
       });
 
     }
 
-    const salt = await bcrypt.genSalt(10);
-
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const user = await UsersModel.create({
-      email,
-      password: hashedPassword,
-      username,
-      createdAt,
-    });
-
-    const token = createSecretToken(user._id);
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "User signed in successfully",
-      user,
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-
-  }
-};
-
-module.exports.Login = async (req, res) => {
-
-  try {
-
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-
-      return res.json({
-        success: false,
-        message: "All fields are required",
-      });
-
-    }
-
-    const user = await UsersModel.findOne({ email });
+    const user =
+      await UsersModel.findOne({ username });
 
     if (!user) {
 
-      return res.json({
-        success: false,
-        message: "Incorrect password or email",
+      return res.status(404).json({
+
+        message: "User not found",
+
       });
 
     }
 
-    const auth = await bcrypt.compare(password, user.password);
+    const isPasswordCorrect =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
-    if (!auth) {
+    if (!isPasswordCorrect) {
 
-      return res.json({
-        success: false,
-        message: "Incorrect password or email",
+      return res.status(401).json({
+
+        message: "Invalid credentials",
+
       });
 
     }
 
-    const token = createSecretToken(user._id);
+    const token = generateToken(user);
 
     res.cookie("token", token, {
+
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+
+      secure:
+        process.env.NODE_ENV === "production",
+
+      sameSite: "strict",
+
+      maxAge: 24 * 60 * 60 * 1000,
+
     });
 
-    res.status(201).json({
-      success: true,
-      message: "User logged in successfully",
+    return res.status(200).json({
+
+      message: "Login successful",
+
+      user: {
+
+        id: user._id,
+
+        username: user.username,
+
+        email: user.email,
+
+      },
+
     });
 
-  } catch (error) {
+  } catch (e) {
 
-    console.error(error);
+    console.log(e);
 
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
+    return res.status(500).json({
+
+      message: `Something went wrong ${e}`,
+
     });
 
   }
+
+};
+// REGISTER CONTROLLER
+
+const register = async (req, res) => {
+
+  try {
+
+    const { username, email, password } = req.body;
+
+    // Validation
+
+    if (!username || !email || !password) {
+
+      return res.status(400).json({
+
+        message: "Please provide all fields",
+
+      });
+
+    }
+
+    // Check existing user
+
+    const existingUser =
+      await UsersModel.findOne({ email });
+
+    if (existingUser) {
+
+      return res.status(409).json({
+
+        message: "User already exists",
+
+      });
+
+    }
+
+    // Hash password
+
+    const hashedPassword =
+      await bcrypt.hash(password, 10);
+
+    // Create new user
+
+    const newUser = new UsersModel({
+
+      username,
+
+      email,
+
+      password: hashedPassword,
+
+    });
+
+    // Save user
+
+    await newUser.save();
+
+    // Generate token
+
+    const token = generateToken(newUser);
+
+    // Store cookie
+
+    res.cookie("token", token, {
+
+      httpOnly: true,
+
+      secure:
+        process.env.NODE_ENV === "production",
+
+      sameSite: "strict",
+
+      maxAge: 24 * 60 * 60 * 1000,
+
+    });
+
+    // Success response
+
+    return res.status(201).json({
+
+      message: "User registered successfully",
+
+      user: {
+
+        id: newUser._id,
+
+        username: newUser.username,
+
+        email: newUser.email,
+
+      },
+
+    });
+
+  } catch (e) {
+
+    console.log(e);
+
+    return res.status(500).json({
+
+      message: `Something went wrong ${e}`,
+
+    });
+
+  }
+
+};
+
+module.exports = {
+
+  login,
+
+  register,
+
 };

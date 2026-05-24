@@ -4,10 +4,17 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
-const {HoldingsModel} = require("./models/HoldingsModel");
-const {PositionsModel} = require ("./models/PositionsModel");
-const {OrdersModel} = require("./models/OrdersModel");
-const { Signup,Login } = require("./Controllers/AuthController");
+const HoldingsModel =
+require("./models/HoldingsModel");
+
+const PositionsModel =
+require("./models/PositionsModel");
+
+const OrdersModel =
+require("./models/OrdersModel");
+const { register,login} = require("./Controllers/AuthController");
+const { newOrder } = require("./Controllers/OrderController");
+const {watchlist} = require("./data.js");
 
 const {userVerification} = require("./middleware/AuthMiddleware");
 const PORT= process.env.PORT || 5000;
@@ -25,43 +32,161 @@ app.use(
 );
 app.use(bodyParser.json());
 app.use(cookieParser());
-// for all the holdings data fetching from the database
-app.get("/allHoldings",async(req,res)=>{
-  try {
-    const holdings = await HoldingsModel.find({});
-    res.json(holdings);
-  } catch (error) { 
-    console.error("Error fetching holdings:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  };
+
+// for all holdongs data fetching from the database
+app.get("/allHoldings", userVerification, async (req, res) => {
+
+   const holdings =
+      await HoldingsModel.find({
+         userId: req.user._id
+      });
+
+   const enrichedHoldings =
+      holdings.map((holding) => {
+
+         const stock =
+            watchlist.find(
+               item =>
+                  item.name === holding.name
+            );
+
+         const net =
+            (
+               (
+                  (stock.price - holding.avg)
+                  /
+                  holding.avg
+               ) * 100
+            ).toFixed(2) + "%";
+
+         return {
+
+            ...holding._doc,
+
+            price: stock.price,
+
+            day: stock.percent,
+
+            net,
+
+            isLoss:
+               stock.percent.includes("-"),
+         };
+      });
+
+   res.json(enrichedHoldings);
 });
 //authentication rotes
 
-app.post("/signup", Signup);
-app.post('/login', Login)
-app.post('/p',userVerification)
-// for all the positions data fetching from the database
-app.get("/allPositions",async(req,res)=>{
-  try { 
-    const positions = await PositionsModel.find({});
-    res.json(positions);
-  } catch (error) {
-    console.error("Error fetching positions:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  };
-});
+app.post("/register", register);
+app.post('/login', login);
+app.get(
 
-app.post("/newOrder",async(req,res)=>{
-  console.log(req.body);
-  let newOrder=new OrdersModel({
-    name: req.body.name,
-    qty: req.body.qty,
-    price: req.body.price,
-    mode: req.body.mode,
-  });
-  await newOrder.save();
-  res.send("Order placed successfully!");
-});
+  "/verify",
+
+  userVerification,
+
+  (req, res) => {
+
+    res.status(200).json({
+
+      status: true,
+
+      user: {
+
+        id: req.user._id,
+
+        username: req.user.username,
+
+        email: req.user.email,
+
+      },
+
+    });
+
+  }
+
+);
+app.post(
+  "/newOrder",
+  userVerification,
+  newOrder
+);
+
+// for all the positions data fetching from the database
+app.get(
+
+  "/allPositions",
+
+  async (req, res) => {
+
+    try {
+
+      const positions =
+        await PositionsModel.find({});
+
+      res.json(positions);
+
+    } catch (error) {
+
+      console.log(error);
+
+      res.status(500).json({
+
+        message:
+          "Error fetching positions",
+
+      });
+
+    }
+
+  }
+
+);
+//for a;; the orders
+app.get(
+
+  "/allOrders",
+
+  userVerification,
+
+  async (req, res) => {
+
+    try {
+
+      const orders =
+        await OrdersModel.find({
+
+          userId: req.user._id,
+
+        })
+
+        .sort({
+
+          createdAt: -1,
+
+        });
+
+      res.json(orders);
+
+    } catch (error) {
+
+      console.log(error);
+
+      res.status(500).json({
+
+        message:
+          "Error fetching orders",
+
+      });
+
+    }
+
+  }
+
+);
+
+
 // this is for the injection positions data in teh database using the foreach loop
 // app.get("/seed", async(req, res) => {
 //     let tempPositions=[
