@@ -185,6 +185,18 @@ app.get(
   }
 
 );
+//log out 
+
+app.get("/logout", (req, res) => {
+
+  res.clearCookie("token");
+
+  res.json({
+    message: "Logged out successfully",
+  });
+
+});
+
 
 
 // this is for the injection positions data in teh database using the foreach loop
