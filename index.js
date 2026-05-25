@@ -17,15 +17,15 @@ const { newOrder } = require("./Controllers/OrderController");
 const {watchlist} = require("./data.js");
 
 const {userVerification} = require("./middleware/AuthMiddleware");
-const PORT= process.env.PORT || 5000;
+  const PORT= process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
 const app = express();
 
 app.use(
   cors({
      origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
+      "zerodha-clone-landing-c3vz.vercel.app",
+      "zerodha-clone-dashboard-gilt.vercel.app",
     ],
     credentials: true,
   })
