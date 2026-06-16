@@ -51,7 +51,7 @@ Backend service powering the Zerodha Clone trading platform. Built using Node.js
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/OptiSolvD/zerodha-clone-backend-.git
 cd backend
 npm install
 npm start
