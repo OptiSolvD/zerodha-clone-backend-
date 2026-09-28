@@ -33,6 +33,10 @@ app.use(
 );
 app.use(bodyParser.json());
 app.use(cookieParser());
+//test route 
+app.get("/test",(req,res)=>{
+  res.json({"test":"update 1"});
+});
 
 // for all holdongs data fetching from the database
 app.get("/allHoldings", userVerification, async (req, res) => {
