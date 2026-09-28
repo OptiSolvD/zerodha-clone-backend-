@@ -20,13 +20,25 @@ jobs:
     steps:
     - name: Backup .env
       run: |
-        if [ -f .env ]; then mv .env /temp/env_backup; fi
+        mkdir -p /tmp/env-backup
+        if [ -f .env ]; then
+          cp .env /tmp/env-backup/env_backup
+          echo ".env backed up"
+        else
+          echo ".env not found"
+        fi
       
     
     - uses: actions/checkout@v4
     - name: Restore .env
       run: |
-        if [ -f /temp/env_backup ]; then mv /temp/env_backup .env; fi
+        if [ -f /tmp/env-backup/env_backup ]; then
+          cp /tmp/env-backup/env_backup .env
+          echo ".env restored"
+        else
+          echo "No .env backup found"
+          exit 1
+        fi
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
