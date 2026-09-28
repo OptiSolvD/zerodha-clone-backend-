@@ -35,7 +35,7 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 //test route 
 app.get("/test",(req,res)=>{
-  res.json({"test":"update 1"});
+  res.json({"test":"update 2"});
 });
 
 // for all holdongs data fetching from the database
